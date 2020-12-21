@@ -1,0 +1,20 @@
+[package]
+name = "particles_editor"
+version = "0.1.0"
+authors = ["Fedor Logachev <not.fl3@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+macroquad = { version = "0.3.0-alpha" }
+macroquad-particles = { version = "0.1.0", features = ["nanoserde"] }
+megaui-macroquad = "0.1"
+nanoserde = "0.1"
+
+#[patch.crates-io]
+#macroquad = { path = '../macroquad' }
+#miniquad = { path = '../miniquad' }
+#megaui = { path = '../megaui' }
+#megaui-macroquad = { path = '../megaui-macroquad' }
+#nanoserde = { path = '../nanoserde' }
