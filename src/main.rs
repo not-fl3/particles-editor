@@ -395,8 +395,20 @@ async fn main() {
                     ui.drag(
                         hash!(),
                         "Linear acceleration",
-                        (0., 100.),
+                        (-100., 100.),
                         &mut emitter.config.linear_accel,
+                    );
+                    ui.drag(
+                        hash!(),
+                        "Gravity x",
+                        (-100., 100.),
+                        &mut emitter.config.gravity.x,
+                    );
+                    ui.drag(
+                        hash!(),
+                        "Gravity y",
+                        (-100., 100.),
+                        &mut emitter.config.gravity.y,
                     );
                 });
                 ui.tree_node(hash!(), "Direction", |ui| {
