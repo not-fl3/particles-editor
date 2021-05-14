@@ -1,10 +1,9 @@
 use macroquad::prelude::*;
+use macroquad::ui::root_ui;
+use macroquad::ui::widgets::Window;
+use macroquad::ui::{Id, Ui};
 
-use megaui_macroquad::{
-    draw_megaui, draw_window,
-    megaui::{self, hash},
-    mouse_captured, mouse_over_ui, set_megaui_texture, WindowParams,
-};
+use macroquad::hash;
 
 use macroquad_particles::{
     BlendMode, Curve, EmissionShape, Emitter, EmitterConfig, Interpolation, ParticleShape,
@@ -26,12 +25,14 @@ fn color_picker_texture(w: usize, h: usize) -> (Texture2D, Image) {
         }
     }
 
-    (load_texture_from_image(&image), image)
+    (Texture2D::from_image(&image), image)
 }
 
-fn color_picker(ui: &mut megaui::Ui, id: megaui::Id, data: &mut Color) -> bool {
+fn color_picker(ui: &mut Ui, id: Id, data: &mut Color, color_picker_texture: Texture2D) -> bool {
+    let is_mouse_captured = ui.is_mouse_captured();
+
     let mut canvas = ui.canvas();
-    let cursor = canvas.request_space(megaui::Vector2::new(200., 220.));
+    let cursor = canvas.request_space(Vec2::new(200., 220.));
     let mouse = mouse_position();
 
     let x = mouse.0 as i32 - cursor.x as i32;
@@ -42,38 +43,38 @@ fn color_picker(ui: &mut megaui::Ui, id: megaui::Id, data: &mut Color) -> bool {
         let lightness = 1.0 - x as f32 * ratio;
         let hue = y as f32 * ratio;
 
-        if is_mouse_button_down(MouseButton::Left) && mouse_captured() == false {
+        if is_mouse_button_down(MouseButton::Left) && is_mouse_captured == false {
             *data = macroquad::color::hsl_to_rgb(hue, 1.0, lightness).into();
         }
     }
 
     canvas.rect(
-        megaui::Rect::new(cursor.x - 5.0, cursor.y - 5.0, 210.0, 395.0),
-        megaui::Color::new(0.7, 0.7, 0.7, 1.0),
-        megaui::Color::new(0.9, 0.9, 0.9, 1.0),
+        Rect::new(cursor.x - 5.0, cursor.y - 5.0, 210.0, 395.0),
+        Color::new(0.7, 0.7, 0.7, 1.0),
+        Color::new(0.9, 0.9, 0.9, 1.0),
     );
 
     canvas.rect(
-        megaui::Rect::new(cursor.x, cursor.y, 200.0, 18.0),
-        megaui::Color::new(0.0, 0.0, 0.0, 1.0),
-        megaui::Color::new(data.r, data.g, data.b, 1.0),
+        Rect::new(cursor.x, cursor.y, 200.0, 18.0),
+        Color::new(0.0, 0.0, 0.0, 1.0),
+        Color::new(data.r, data.g, data.b, 1.0),
     );
     canvas.image(
-        megaui::Rect::new(cursor.x, cursor.y + 20.0, 200.0, 200.0),
-        0,
+        Rect::new(cursor.x, cursor.y + 20.0, 200.0, 200.0),
+        color_picker_texture,
     );
 
     let (h, _, l) = macroquad::color::rgb_to_hsl(*data);
 
     canvas.rect(
-        megaui::Rect::new(
+        Rect::new(
             cursor.x + (1.0 - l) * 200.0 - 3.5,
             cursor.y + h * 200. + 20.0 - 3.5,
             7.0,
             7.0,
         ),
-        megaui::Color::new(0.3, 0.3, 0.3, 1.0),
-        megaui::Color::new(1.0, 1.0, 1.0, 1.0),
+        Color::new(0.3, 0.3, 0.3, 1.0),
+        Color::new(1.0, 1.0, 1.0, 1.0),
     );
 
     ui.slider(hash!(id, "alpha"), "Alpha", 0.0..1.0, &mut data.a);
@@ -106,44 +107,40 @@ fn color_picker(ui: &mut megaui::Ui, id: megaui::Id, data: &mut Color) -> bool {
     false
 }
 
-fn colorbox(ui: &mut megaui::Ui, id: megaui::Id, label: &str, data: &mut Color) {
+fn colorbox(ui: &mut Ui, id: Id, label: &str, data: &mut Color, color_picker_texture: Texture2D) {
     ui.label(None, label);
     let mut canvas = ui.canvas();
     let cursor = canvas.cursor();
 
     canvas.rect(
-        megaui::Rect::new(cursor.x + 20.0, cursor.y, 50.0, 18.0),
-        megaui::Color::new(0.2, 0.2, 0.2, 1.0),
-        megaui::Color::new(data.r, data.g, data.b, 1.0),
+        Rect::new(cursor.x + 20.0, cursor.y, 50.0, 18.0),
+        Color::new(0.2, 0.2, 0.2, 1.0),
+        Color::new(data.r, data.g, data.b, 1.0),
     );
     if ui.last_item_clicked() {
         *ui.get_bool(hash!(id, "color picker opened")) ^= true;
     }
     if *ui.get_bool(hash!(id, "color picker opened")) {
-        ui.popup(
-            hash!(id, "color popup"),
-            megaui::Vector2::new(200., 400.),
-            |ui| {
-                if color_picker(ui, id, data) {
-                    *ui.get_bool(hash!(id, "color picker opened")) = false;
-                }
-            },
-        );
+        ui.popup(hash!(id, "color popup"), Vec2::new(200., 400.), |ui| {
+            if color_picker(ui, id, data, color_picker_texture) {
+                *ui.get_bool(hash!(id, "color picker opened")) = false;
+            }
+        });
     }
 }
 
-fn curvebox(ui: &mut megaui::Ui, curve: &mut Curve) {
+fn curvebox(ui: &mut Ui, curve: &mut Curve) {
     let mut canvas = ui.canvas();
     let w = 200.0;
     let h = 50.0;
     let min = 0.0;
     let max = 2.0;
     let (mouse_x, mouse_y) = mouse_position();
-    let pos = canvas.request_space(megaui::Vector2::new(w, h));
+    let pos = canvas.request_space(Vec2::new(w, h));
 
     canvas.rect(
-        megaui::Rect::new(pos.x, pos.y, w, h),
-        megaui::Color::new(0.5, 0.5, 0.5, 1.0),
+        Rect::new(pos.x, pos.y, w, h),
+        Color::new(0.5, 0.5, 0.5, 1.0),
         None,
     );
 
@@ -156,21 +153,21 @@ fn curvebox(ui: &mut megaui::Ui, curve: &mut Curve) {
         let y1 = (1.0 - value1 / (max - min)) * h;
 
         canvas.line(
-            megaui::Vector2::new(pos.x + x0 * w, pos.y + y0),
-            megaui::Vector2::new(pos.x + x1 * w, pos.y + y1),
-            megaui::Color::new(0.5, 0.5, 0.5, 1.0),
+            Vec2::new(pos.x + x0 * w, pos.y + y0),
+            Vec2::new(pos.x + x1 * w, pos.y + y1),
+            Color::new(0.5, 0.5, 0.5, 1.0),
         );
     }
     for (x, value) in &curve.points {
         let y = (1.0 - value / (max - min)) * h;
 
         let color = if (x - t).abs() < 0.1 {
-            megaui::Color::new(0.9, 0.5, 0.5, 1.0)
+            Color::new(0.9, 0.5, 0.5, 1.0)
         } else {
-            megaui::Color::new(0.5, 0.5, 0.5, 1.0)
+            Color::new(0.5, 0.5, 0.5, 1.0)
         };
         canvas.rect(
-            megaui::Rect::new(pos.x + x * w - 2., pos.y + y - 2., 4., 4.),
+            Rect::new(pos.x + x * w - 2., pos.y + y - 2., 4., 4.),
             color,
             color,
         );
@@ -215,7 +212,6 @@ fn curvebox(ui: &mut megaui::Ui, curve: &mut Curve) {
 #[macroquad::main("Particles editor")]
 async fn main() {
     let (color_picker_texture, _) = color_picker_texture(200, 200);
-    set_megaui_texture(0, color_picker_texture);
 
     let mut background_color = BLACK;
     let mut emitter = Emitter::new(EmitterConfig {
@@ -251,16 +247,10 @@ async fn main() {
 
         set_default_camera();
 
-        draw_window(
-            hash!(),
-            vec2(20., 20.),
-            vec2(420., 500.),
-            WindowParams {
-                label: "Particles".to_string(),
-                close_button: false,
-                ..Default::default()
-            },
-            |ui| {
+        Window::new(hash!(), vec2(20., 20.), vec2(420., 500.))
+            .label("Particles")
+            .close_button(false)
+            .ui(&mut root_ui(), |ui| {
                 ui.checkbox(hash!(), "Emitting", &mut emitter.config.emitting);
                 ui.drag(hash!(), "Amount", (0, 1000), &mut emitter.config.amount);
 
@@ -443,15 +433,39 @@ async fn main() {
                 });
                 ui.tree_node(hash!(), "Colors", |ui| {
                     let curve = &mut emitter.config.colors_curve;
-                    colorbox(ui, hash!(), "Start color", &mut curve.start);
-                    colorbox(ui, hash!(), "Mid color", &mut curve.mid);
-                    colorbox(ui, hash!(), "End color", &mut curve.end);
+                    colorbox(
+                        ui,
+                        hash!(),
+                        "Start color",
+                        &mut curve.start,
+                        color_picker_texture,
+                    );
+                    colorbox(
+                        ui,
+                        hash!(),
+                        "Mid color",
+                        &mut curve.mid,
+                        color_picker_texture,
+                    );
+                    colorbox(
+                        ui,
+                        hash!(),
+                        "End color",
+                        &mut curve.end,
+                        color_picker_texture,
+                    );
                 });
                 ui.tree_node(hash!(), "Scene", |ui| {
                     ui.drag(hash!(), "screen width", None, &mut camera_width);
                     ui.drag(hash!(), "screen height", None, &mut camera_height);
 
-                    colorbox(ui, hash!(), "Background color", &mut background_color);
+                    colorbox(
+                        ui,
+                        hash!(),
+                        "Background color",
+                        &mut background_color,
+                        color_picker_texture,
+                    );
                     let mut n = *ui.get_any::<usize>(hash!("emitter position selection"));
                     ui.combo_box(
                         hash!(),
@@ -496,27 +510,22 @@ async fn main() {
                             emitter.update_particle_mesh();
                         }
                     }
-                    ui.editbox(
-                        hash!(),
-                        megaui::Vector2::new(400.0, 50.0),
-                        &mut config_serialized,
-                    );
+                    ui.editbox(hash!(), Vec2::new(400.0, 50.0), &mut config_serialized);
                 });
-            },
-        );
 
-        draw_megaui();
+                if is_mouse_button_down(MouseButton::Left)
+                    && (ui.is_mouse_over(mouse_position().into()) || ui.is_mouse_captured())
+                {
+                    mouse_drag_available = false;
+                }
+            });
 
-        set_camera(Camera2D::from_display_rect(Rect::new(
+        set_camera(&Camera2D::from_display_rect(Rect::new(
             0.0,
             0.0,
             camera_width,
             camera_height,
         )));
-
-        if is_mouse_button_down(MouseButton::Left) && (mouse_over_ui() || mouse_captured()) {
-            mouse_drag_available = false;
-        }
 
         if is_mouse_button_down(MouseButton::Left) == false {
             mouse_drag_available = true;
@@ -539,6 +548,8 @@ async fn main() {
                 (get_time() as f32 * flying * lissajous_b).cos() * 20.0 + 50.0,
             );
         }
+
+        set_default_camera();
 
         next_frame().await;
     }
