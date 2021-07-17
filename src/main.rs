@@ -247,7 +247,7 @@ async fn main() {
 
         set_default_camera();
 
-        Window::new(hash!(), vec2(20., 20.), vec2(420., 500.))
+        Window::new(hash!(), vec2(20., 20.), vec2(420., 700.))
             .label("Particles")
             .close_button(false)
             .ui(&mut root_ui(), |ui| {
@@ -503,12 +503,16 @@ async fn main() {
                         config_serialized = nanoserde::SerJson::serialize_json(&emitter.config);
                     }
                     if ui.button(None, "import") {
-                        if let Ok(config) = nanoserde::DeJson::deserialize_json(&config_serialized)
-                        {
-                            emitter.config = config;
-                            emitter.rebuild_size_curve();
-                            emitter.update_particle_mesh();
-                        }
+                        match nanoserde::DeJson::deserialize_json(&config_serialized) {
+                            Ok(config) => {
+                                emitter.config = config;
+                                emitter.rebuild_size_curve();
+                                emitter.update_particle_mesh();
+                            }
+                            Err(err) => {
+                                println!("{}", err);
+                            }
+                        };
                     }
                     ui.editbox(hash!(), Vec2::new(400.0, 50.0), &mut config_serialized);
                 });
